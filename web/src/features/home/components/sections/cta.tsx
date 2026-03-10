@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 
 import { AnimateInView } from '@/components/animate-in-view'
 import { Button } from '@/components/ui/button'
+import { useStatus } from '@/hooks/use-status'
 
 interface CTAProps {
   className?: string
@@ -30,6 +31,13 @@ interface CTAProps {
 
 export function CTA(props: CTAProps) {
   const { t } = useTranslation()
+  // START custom registration visibility change: avoid directing guests to disabled password registration.
+  const { status } = useStatus()
+  const canRegister =
+    !status?.self_use_mode_enabled &&
+    status?.register_enabled !== false &&
+    status?.password_register_enabled !== false
+  // END custom registration visibility change: public CTA registration availability resolved.
 
   if (props.isAuthenticated) {
     return null
@@ -66,8 +74,11 @@ export function CTA(props: CTAProps) {
           )}
         </p>
         <div className='mt-8 flex items-center justify-center gap-3'>
-          <Button className='group rounded-lg' render={<Link to='/sign-up' />}>
-            {t('Get Started')}
+          <Button
+            className='group rounded-lg'
+            render={<Link to={canRegister ? '/sign-up' : '/sign-in'} />}
+          >
+            {canRegister ? t('Get Started') : t('Sign In')}
             <ArrowRight className='ml-1 size-3.5 transition-transform duration-200 group-hover:translate-x-0.5' />
           </Button>
           <Button

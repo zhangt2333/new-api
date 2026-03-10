@@ -37,8 +37,10 @@ export function SignIn() {
           <h2 className='text-center text-2xl font-semibold tracking-tight sm:text-left'>
             {t('Sign in')}
           </h2>
+          {/* START custom password auth visibility change: hide sign-up when password registration is disabled. */}
           {!status?.self_use_mode_enabled &&
-            status?.register_enabled !== false && (
+            status?.register_enabled !== false &&
+            status?.password_register_enabled !== false && (
               <p className='text-muted-foreground text-left text-sm sm:text-base'>
                 {t("Don't have an account?")}{' '}
                 <Link
@@ -50,6 +52,7 @@ export function SignIn() {
                 .
               </p>
             )}
+          {/* END custom password auth visibility change: sign-up visibility is guarded. */}
         </div>
 
         <UserAuthForm redirectTo={redirect} />
