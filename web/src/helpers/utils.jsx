@@ -1058,7 +1058,7 @@ const DEFAULT_PRICING_FILTERS = {
   showWithRecharge: false,
   currency: 'USD',
   showRatio: false,
-  viewMode: 'card',
+  viewMode: 'table',
   tokenUnit: 'M',
   filterGroup: 'all',
   filterQuotaType: 'all',
