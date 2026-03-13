@@ -44,12 +44,14 @@ type FilterState = {
   rechargePrice?: boolean
 }
 
+// START custom pricing view change: default pricing pages to the table view.
 function normalizeViewMode(value: unknown): ViewMode {
-  if (value === VIEW_MODES.TABLE) {
-    return VIEW_MODES.TABLE
+  if (value === VIEW_MODES.CARD) {
+    return VIEW_MODES.CARD
   }
-  return VIEW_MODES.CARD
+  return VIEW_MODES.TABLE
 }
+// END custom pricing view change: default normalization is table-based.
 
 export function useFilters(models: PricingModel[]) {
   const search = useSearch({ from: '/pricing/' })
@@ -129,8 +131,10 @@ export function useFilters(models: PricingModel[]) {
     [updateFilters]
   )
   const setViewMode = useCallback(
+    // START custom pricing view change: persist card mode only when explicitly selected.
     (v: ViewMode) =>
-      updateFilters({ view: v === VIEW_MODES.CARD ? undefined : v }),
+      updateFilters({ view: v === VIEW_MODES.TABLE ? undefined : v }),
+    // END custom pricing view change: table mode remains the implicit default.
     [updateFilters]
   )
   const setShowRechargePrice = useCallback(
