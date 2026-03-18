@@ -19,6 +19,11 @@ import (
 
 const UserNameMaxLength = 20
 
+// START custom quota ceiling change: define the maximum remaining balance for this deployment.
+const MaxUserRemainQuota = 75000000
+
+// END custom quota ceiling change: deployment balance cap defined.
+
 var userSortColumns = map[string]string{
 	"id":            "id",
 	"username":      "username",
@@ -784,6 +789,11 @@ func (user *User) EditWithTx(tx *gorm.DB, updatePassword bool) error {
 	}
 
 	newUser := *user
+	// START custom quota ceiling change: keep model edits within the deployment balance cap.
+	if newUser.Quota > MaxUserRemainQuota {
+		return fmt.Errorf("用户剩余额度不能超过 %d", MaxUserRemainQuota)
+	}
+	// END custom quota ceiling change: model edit validation complete.
 	updates := map[string]interface{}{
 		"username":     newUser.Username,
 		"display_name": newUser.DisplayName,
@@ -1245,6 +1255,31 @@ func IncreaseUserQuota(id int, quota int, db bool) (err error) {
 	}
 	return increaseUserQuota(id, quota)
 }
+
+// START custom quota ceiling change: atomically increase balance only when the cap remains satisfied.
+func IncreaseUserQuotaWithLimit(id int, quota int, maxQuota int) error {
+	if quota < 0 {
+		return errors.New("quota 不能为负数！")
+	}
+	result := DB.Model(&User{}).
+		Where("id = ? AND quota + ? <= ?", id, quota, maxQuota).
+		Update("quota", gorm.Expr("quota + ?", quota))
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("用户剩余额度不能超过 %d", maxQuota)
+	}
+	gopool.Go(func() {
+		err := cacheIncrUserQuota(id, int64(quota))
+		if err != nil {
+			common.SysLog("failed to increase user quota: " + err.Error())
+		}
+	})
+	return nil
+}
+
+// END custom quota ceiling change: atomic capped balance increase complete.
 
 func increaseUserQuota(id int, quota int) (err error) {
 	err = DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota + ?", quota)).Error

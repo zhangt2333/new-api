@@ -703,6 +703,12 @@ func UpdateUser(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionHigherLevel)
 		return
 	}
+	// START custom quota ceiling change: reject admin edits above the personal-server balance cap.
+	if updatedUser.Quota > model.MaxUserRemainQuota {
+		common.ApiErrorMsg(c, fmt.Sprintf("用户剩余额度不能超过 %d", model.MaxUserRemainQuota))
+		return
+	}
+	// END custom quota ceiling change: direct admin edits are capped.
 	if updatedUser.Password == "$I_LOVE_U" {
 		updatedUser.Password = "" // rollback to what it should be
 	}
@@ -1174,10 +1180,12 @@ func ManageUser(c *gin.Context) {
 				common.ApiErrorI18n(c, i18n.MsgUserQuotaChangeZero)
 				return
 			}
-			if err := model.IncreaseUserQuota(user.Id, req.Value, true); err != nil {
+			// START custom quota ceiling change: apply additions atomically under the balance cap.
+			if err := model.IncreaseUserQuotaWithLimit(user.Id, req.Value, model.MaxUserRemainQuota); err != nil {
 				common.ApiError(c, err)
 				return
 			}
+			// END custom quota ceiling change: capped addition completed.
 			recordManageAuditFor(c, user.Id, "user.quota_add", map[string]interface{}{
 				"quota": logger.LogQuota(req.Value),
 			})
@@ -1195,6 +1203,12 @@ func ManageUser(c *gin.Context) {
 			})
 		case "override":
 			oldQuota := user.Quota
+			// START custom quota ceiling change: reject quota overrides above the balance cap.
+			if req.Value > model.MaxUserRemainQuota {
+				common.ApiErrorMsg(c, fmt.Sprintf("用户剩余额度不能超过 %d", model.MaxUserRemainQuota))
+				return
+			}
+			// END custom quota ceiling change: quota override is capped.
 			if err := model.DB.Model(&model.User{}).Where("id = ?", user.Id).Update("quota", req.Value).Error; err != nil {
 				common.ApiError(c, err)
 				return
