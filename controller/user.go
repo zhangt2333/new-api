@@ -570,6 +570,10 @@ func UpdateUser(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserCannotCreateHigherLevel)
 		return
 	}
+	if updatedUser.Quota > model.MaxUserRemainQuota {
+		common.ApiErrorMsg(c, fmt.Sprintf("用户剩余额度不能超过 %d", model.MaxUserRemainQuota))
+		return
+	}
 	if updatedUser.Password == "$I_LOVE_U" {
 		updatedUser.Password = "" // rollback to what it should be
 	}
@@ -930,6 +934,10 @@ func ManageUser(c *gin.Context) {
 				common.ApiErrorI18n(c, i18n.MsgUserQuotaChangeZero)
 				return
 			}
+			if user.Quota+req.Value > model.MaxUserRemainQuota {
+				common.ApiErrorMsg(c, fmt.Sprintf("用户剩余额度不能超过 %d", model.MaxUserRemainQuota))
+				return
+			}
 			if err := model.IncreaseUserQuota(user.Id, req.Value, true); err != nil {
 				common.ApiError(c, err)
 				return
@@ -949,6 +957,10 @@ func ManageUser(c *gin.Context) {
 				fmt.Sprintf("管理员减少用户额度 %s", logger.LogQuota(req.Value)), adminInfo)
 		case "override":
 			oldQuota := user.Quota
+			if req.Value > model.MaxUserRemainQuota {
+				common.ApiErrorMsg(c, fmt.Sprintf("用户剩余额度不能超过 %d", model.MaxUserRemainQuota))
+				return
+			}
 			if err := model.DB.Model(&model.User{}).Where("id = ?", user.Id).Update("quota", req.Value).Error; err != nil {
 				common.ApiError(c, err)
 				return

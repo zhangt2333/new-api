@@ -59,6 +59,7 @@ import {
 import UserBindingManagementModal from './UserBindingManagementModal';
 
 const { Text, Title } = Typography;
+const MAX_USER_REMAIN_QUOTA = 75000000;
 
 const EditUserModal = (props) => {
   const { t } = useTranslation();
@@ -169,8 +170,21 @@ const EditUserModal = (props) => {
   /* --------------------- atomic quota adjust -------------------- */
   const adjustQuota = async () => {
     const quotaVal = parseInt(adjustQuotaLocal) || 0;
+    const currentQuota = parseInt(formApiRef.current?.getValue('quota') || 0);
     if (quotaVal <= 0 && adjustMode !== 'override') return;
-    if (adjustMode === 'override' && (adjustQuotaLocal === '' || adjustQuotaLocal == null)) return;
+    if (
+      adjustMode === 'override' &&
+      (adjustQuotaLocal === '' || adjustQuotaLocal == null)
+    )
+      return;
+    if (
+      (adjustMode === 'add' &&
+        currentQuota + Math.abs(quotaVal) > MAX_USER_REMAIN_QUOTA) ||
+      (adjustMode === 'override' && quotaVal > MAX_USER_REMAIN_QUOTA)
+    ) {
+      showError(t('用户剩余额度不能超过 75000000'));
+      return;
+    }
     setAdjustLoading(true);
     try {
       const res = await API.post('/api/user/manage', {
@@ -210,13 +224,13 @@ const EditUserModal = (props) => {
     let result;
     switch (adjustMode) {
       case 'add':
-        result = current + Math.abs(val);
+        result = Math.min(current + Math.abs(val), MAX_USER_REMAIN_QUOTA);
         return `${t('当前额度')}：${renderQuota(current)}，+${renderQuota(Math.abs(val))} = ${renderQuota(result)}`;
       case 'subtract':
         result = current - Math.abs(val);
         return `${t('当前额度')}：${renderQuota(current)}，-${renderQuota(Math.abs(val))} = ${renderQuota(result)}`;
       case 'override':
-        return `${t('当前额度')}：${renderQuota(current)} → ${renderQuota(val)}`;
+        return `${t('当前额度')}：${renderQuota(current)} → ${renderQuota(Math.min(val, MAX_USER_REMAIN_QUOTA))}`;
       default:
         return '';
     }
@@ -514,6 +528,11 @@ const EditUserModal = (props) => {
             value={adjustAmountLocal}
             precision={6}
             min={adjustMode === 'override' ? undefined : 0}
+            max={
+              adjustMode === 'override'
+                ? quotaToDisplayAmount(MAX_USER_REMAIN_QUOTA)
+                : undefined
+            }
             step={0.000001}
             onChange={(val) => {
               const amount = val === '' || val == null ? '' : val;
@@ -547,6 +566,18 @@ const EditUserModal = (props) => {
             placeholder={t('输入额度')}
             value={adjustQuotaLocal}
             min={adjustMode === 'override' ? undefined : 0}
+            max={
+              adjustMode === 'add'
+                ? Math.max(
+                    0,
+                    MAX_USER_REMAIN_QUOTA -
+                      (parseInt(formApiRef.current?.getValue('quota') || 0) ||
+                        0),
+                  )
+                : adjustMode === 'override'
+                  ? MAX_USER_REMAIN_QUOTA
+                  : undefined
+            }
             onChange={(val) => {
               const quota = val === '' || val == null ? '' : val;
               setAdjustQuotaLocal(quota);

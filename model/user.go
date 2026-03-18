@@ -17,6 +17,7 @@ import (
 )
 
 const UserNameMaxLength = 20
+const MaxUserRemainQuota = 75000000
 
 // User if you add sensitive fields, don't forget to clean them in setupLogin function.
 // Otherwise, the sensitive information will be saved on local storage in plain text!
@@ -521,6 +522,9 @@ func (user *User) Edit(updatePassword bool) error {
 	}
 
 	newUser := *user
+	if newUser.Quota > MaxUserRemainQuota {
+		return fmt.Errorf("用户剩余额度不能超过 %d", MaxUserRemainQuota)
+	}
 	updates := map[string]interface{}{
 		"username":     newUser.Username,
 		"display_name": newUser.DisplayName,
