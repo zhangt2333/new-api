@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"math/rand"
 	"time"
 
@@ -93,6 +94,18 @@ func UserCheckin(userId int) (*Checkin, error) {
 // userCheckinWithTransaction 使用事务执行签到（适用于 MySQL 和 PostgreSQL）
 func userCheckinWithTransaction(checkin *Checkin, userId int, quotaAwarded int) (*Checkin, error) {
 	err := DB.Transaction(func(tx *gorm.DB) error {
+		// START custom quota ceiling change: lock the user and clamp the check-in reward.
+		var user User
+		if err := lockForUpdate(tx).Select("quota").Where("id = ?", userId).First(&user).Error; err != nil {
+			return errors.New("签到失败：获取用户额度出错")
+		}
+		if user.Quota >= MaxUserRemainQuota {
+			return errors.New("当前余额已达上限")
+		}
+		quotaAwarded = min(quotaAwarded, MaxUserRemainQuota-user.Quota)
+		checkin.QuotaAwarded = quotaAwarded
+		// END custom quota ceiling change: transactional check-in reward is capped.
+
 		// 步骤1: 创建签到记录
 		// 数据库有唯一约束 (user_id, checkin_date)，可以防止并发重复签到
 		if err := tx.Create(checkin).Error; err != nil {
@@ -122,6 +135,18 @@ func userCheckinWithTransaction(checkin *Checkin, userId int, quotaAwarded int) 
 
 // userCheckinWithoutTransaction 不使用事务执行签到（适用于 SQLite）
 func userCheckinWithoutTransaction(checkin *Checkin, userId int, quotaAwarded int) (*Checkin, error) {
+	// START custom quota ceiling change: clamp SQLite check-in rewards before writing.
+	currentQuota, err := GetUserQuota(userId, true)
+	if err != nil {
+		return nil, errors.New("签到失败：获取用户额度出错")
+	}
+	if currentQuota >= MaxUserRemainQuota {
+		return nil, errors.New("当前余额已达上限")
+	}
+	quotaAwarded = min(quotaAwarded, MaxUserRemainQuota-currentQuota)
+	checkin.QuotaAwarded = quotaAwarded
+	// END custom quota ceiling change: SQLite check-in reward is capped.
+
 	// 步骤1: 创建签到记录
 	// 数据库有唯一约束 (user_id, checkin_date)，可以防止并发重复签到
 	if err := DB.Create(checkin).Error; err != nil {

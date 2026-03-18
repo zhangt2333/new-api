@@ -19,6 +19,13 @@ import (
 
 const UserNameMaxLength = 20
 
+// START custom quota ceiling change: define the remaining balance cap and its validation error.
+const MaxUserRemainQuota = 75000000
+
+var ErrUserRemainQuotaLimitExceeded = fmt.Errorf("用户剩余额度不能超过 %d", MaxUserRemainQuota)
+
+// END custom quota ceiling change: deployment balance cap and error defined.
+
 var userSortColumns = map[string]string{
 	"id":            "id",
 	"username":      "username",
@@ -877,6 +884,11 @@ func (user *User) EditWithTx(tx *gorm.DB, updatePassword bool) error {
 	}
 
 	newUser := *user
+	// START custom quota ceiling change: keep model edits within the deployment balance cap.
+	if newUser.Quota > MaxUserRemainQuota {
+		return ErrUserRemainQuotaLimitExceeded
+	}
+	// END custom quota ceiling change: model edit validation complete.
 	updates := map[string]any{
 		"username":     newUser.Username,
 		"display_name": newUser.DisplayName,

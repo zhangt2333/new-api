@@ -680,6 +680,12 @@ func UpdateUser(c *gin.Context) {
 		common.ApiErrorT(c, "No permission to update users of same or higher permission level")
 		return
 	}
+	// START custom quota ceiling change: reject admin edits above the personal-server balance cap.
+	if updatedUser.Quota > model.MaxUserRemainQuota {
+		common.ApiError(c, model.ErrUserRemainQuotaLimitExceeded)
+		return
+	}
+	// END custom quota ceiling change: direct admin edits are capped.
 	updatePassword := updatedUser.Password != ""
 	auditParams := map[string]any{
 		"username": originUser.Username,

@@ -62,6 +62,11 @@ func manageUserQuota(c *gin.Context, req ManageRequest) {
 		case errors.Is(err, model.ErrWalletQuotaLimitExceeded):
 			params["failure_reason"] = "quota_limit_exceeded"
 			common.ApiError(c, err)
+		// START custom quota ceiling change: audit balance cap rejections as quota limit failures.
+		case errors.Is(err, model.ErrUserRemainQuotaLimitExceeded):
+			params["failure_reason"] = "quota_limit_exceeded"
+			common.ApiError(c, err)
+		// END custom quota ceiling change: cap failures retain upstream response and audit handling.
 		default:
 			params["failure_reason"] = "database_error"
 			common.ApiError(c, err)
