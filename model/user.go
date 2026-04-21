@@ -903,6 +903,28 @@ func IncreaseUserQuota(id int, quota int, db bool) (err error) {
 	return increaseUserQuota(id, quota)
 }
 
+func IncreaseUserQuotaWithLimit(id int, quota int, maxQuota int) error {
+	if quota < 0 {
+		return errors.New("quota 不能为负数！")
+	}
+	result := DB.Model(&User{}).
+		Where("id = ? AND quota + ? <= ?", id, quota, maxQuota).
+		Update("quota", gorm.Expr("quota + ?", quota))
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("用户剩余额度不能超过 %d", maxQuota)
+	}
+	gopool.Go(func() {
+		err := cacheIncrUserQuota(id, int64(quota))
+		if err != nil {
+			common.SysLog("failed to increase user quota: " + err.Error())
+		}
+	})
+	return nil
+}
+
 func increaseUserQuota(id int, quota int) (err error) {
 	err = DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota + ?", quota)).Error
 	if err != nil {

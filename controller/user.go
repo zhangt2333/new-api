@@ -934,11 +934,7 @@ func ManageUser(c *gin.Context) {
 				common.ApiErrorI18n(c, i18n.MsgUserQuotaChangeZero)
 				return
 			}
-			if user.Quota+req.Value > model.MaxUserRemainQuota {
-				common.ApiErrorMsg(c, fmt.Sprintf("用户剩余额度不能超过 %d", model.MaxUserRemainQuota))
-				return
-			}
-			if err := model.IncreaseUserQuota(user.Id, req.Value, true); err != nil {
+			if err := model.IncreaseUserQuotaWithLimit(user.Id, req.Value, model.MaxUserRemainQuota); err != nil {
 				common.ApiError(c, err)
 				return
 			}
