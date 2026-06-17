@@ -535,12 +535,31 @@ func (user *User) Edit(updatePassword bool) error {
 	}
 
 	DB.First(&user, user.Id)
+	oldUsername := user.Username
 	if err = DB.Model(user).Updates(updates).Error; err != nil {
 		return err
 	}
 
+	// 改名时同步更新关联表中冗余存储的 username
+	if newUser.Username != "" && newUser.Username != oldUsername {
+		if syncErr := syncUsernameToRelatedTables(user.Id, newUser.Username); syncErr != nil {
+			common.SysLog(fmt.Sprintf("同步用户名到关联表失败 (user %d): %s", user.Id, syncErr.Error()))
+		}
+	}
+
 	// Update cache
 	return updateUserCache(*user)
+}
+
+// syncUsernameToRelatedTables 改名后同步更新 logs、tokens 表中冗余存储的 username 字段
+func syncUsernameToRelatedTables(userId int, newUsername string) error {
+	if err := DB.Model(&Log{}).Where("user_id = ?", userId).Update("username", newUsername).Error; err != nil {
+		return err
+	}
+	if err := DB.Model(&Token{}).Where("user_id = ?", userId).Update("username", newUsername).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (user *User) ClearBinding(bindingType string) error {
