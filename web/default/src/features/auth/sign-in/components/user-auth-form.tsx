@@ -393,6 +393,12 @@ export function UserAuthForm({
           </>
         )}
 
+        {!passwordLoginEnabled && !hasAlternativeLogin && (
+          <p className='text-muted-foreground py-6 text-center text-sm'>
+            {t('No sign-in method is enabled. Please contact the administrator.')}
+          </p>
+        )}
+
         <LegalConsent
           status={status}
           checked={agreedToLegal}
