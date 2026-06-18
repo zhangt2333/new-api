@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useStatus } from '@/hooks/use-status'
 import { Button } from '@/components/ui/button'
 import { AnimateInView } from '@/components/animate-in-view'
 
@@ -29,6 +30,11 @@ interface CTAProps {
 
 export function CTA(props: CTAProps) {
   const { t } = useTranslation()
+  const { status } = useStatus()
+  const canRegister =
+    !status?.self_use_mode_enabled &&
+    status?.register_enabled !== false &&
+    status?.password_register_enabled !== false
 
   if (props.isAuthenticated) {
     return null
@@ -65,8 +71,8 @@ export function CTA(props: CTAProps) {
           )}
         </p>
         <div className='mt-8 flex items-center justify-center gap-3'>
-          <Button className='group rounded-lg' render={<Link to='/sign-up' />}>
-            {t('Get Started')}
+          <Button className='group rounded-lg' render={<Link to={canRegister ? '/sign-up' : '/sign-in'} />}>
+            {canRegister ? t('Get Started') : t('Sign in')}
             <ArrowRight className='ml-1 size-3.5 transition-transform duration-200 group-hover:translate-x-0.5' />
           </Button>
           <Button
