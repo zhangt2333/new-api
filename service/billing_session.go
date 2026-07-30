@@ -11,6 +11,9 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/types"
+	// START custom insufficient-balance guidance change: include the configured website address.
+	"github.com/QuantumNous/new-api/setting/system_setting"
+	// END custom insufficient-balance guidance change: website setting import complete.
 
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/gin-gonic/gin"
@@ -338,6 +341,30 @@ func (s *BillingSession) syncRelayInfo() {
 // NewBillingSession 工厂 — 根据计费偏好创建会话并处理回退
 // ---------------------------------------------------------------------------
 
+// START custom insufficient-balance guidance change: resolve the website address used in recovery guidance.
+func guidanceServerAddress(c *gin.Context) string {
+	serverAddress := strings.TrimRight(strings.TrimSpace(system_setting.ServerAddress), "/")
+	if serverAddress == "" && c != nil && c.Request != nil && c.Request.Host != "" {
+		scheme := "http"
+		if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		serverAddress = scheme + "://" + c.Request.Host
+	}
+	return serverAddress
+}
+
+// guidanceWebsiteClause prefixes recovery instructions with the website address when it is known.
+func guidanceWebsiteClause(c *gin.Context) string {
+	serverAddress := guidanceServerAddress(c)
+	if serverAddress == "" {
+		return ""
+	}
+	return fmt.Sprintf("请打开网站 %s ", serverAddress)
+}
+
+// END custom insufficient-balance guidance change: guidance helpers complete.
+
 // NewBillingSession 根据用户计费偏好创建 BillingSession，处理 subscription_first / wallet_first 的回退。
 func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preConsumedQuota int) (*BillingSession, *types.NewAPIError) {
 	if relayInfo == nil {
@@ -352,18 +379,21 @@ func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preCons
 		if err != nil {
 			return nil, types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
 		}
+		// START custom insufficient-balance guidance change: direct users to automatic daily check-in.
+		websiteClause := guidanceWebsiteClause(c)
 		if userQuota <= 0 {
 			return nil, types.NewErrorWithStatusCode(
-				fmt.Errorf("用户额度不足, 剩余额度: %s", logger.FormatQuota(userQuota)),
+				fmt.Errorf("预扣费额度失败，%s进行签到自动获取余额（用户剩余额度:%s，需要预扣费额度:%s）", websiteClause, logger.FormatQuota(userQuota), logger.FormatQuota(preConsumedQuota)),
 				types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
 				types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
 		}
 		if userQuota-preConsumedQuota < 0 {
 			return nil, types.NewErrorWithStatusCode(
-				fmt.Errorf("预扣费额度失败, 用户剩余额度: %s, 需要预扣费额度: %s", logger.FormatQuota(userQuota), logger.FormatQuota(preConsumedQuota)),
+				fmt.Errorf("预扣费额度失败，%s进行签到自动获取余额（用户剩余额度:%s，需要预扣费额度:%s）", websiteClause, logger.FormatQuota(userQuota), logger.FormatQuota(preConsumedQuota)),
 				types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
 				types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
 		}
+		// END custom insufficient-balance guidance change: insufficient wallet errors include recovery instructions.
 		relayInfo.UserQuota = userQuota
 
 		session := &BillingSession{
