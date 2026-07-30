@@ -808,6 +808,9 @@ func (user *User) EditWithTx(tx *gorm.DB, updatePassword bool) error {
 	if err = tx.First(&current, user.Id).Error; err != nil {
 		return err
 	}
+	// START custom username sync change: capture the original username for rename detection.
+	oldUsername := current.Username
+	// END custom username sync change: original username captured for rename detection.
 	authChanged := (updatePassword && current.Password != newUser.Password) || current.Group != newUser.Group
 	if authChanged {
 		newUser.AuthVersion, err = IncrementUserAuthVersionWithTx(tx, user.Id)
@@ -818,8 +821,29 @@ func (user *User) EditWithTx(tx *gorm.DB, updatePassword bool) error {
 	if err = tx.Model(&current).Updates(updates).Error; err != nil {
 		return err
 	}
+	// START custom username sync change: keep denormalized usernames aligned after a rename.
+	if newUser.Username != "" && newUser.Username != oldUsername {
+		if syncErr := syncUsernameToRelatedTables(tx, user.Id, newUser.Username); syncErr != nil {
+			common.SysLog(fmt.Sprintf("同步用户名到关联表失败 (user %d): %s", user.Id, syncErr.Error()))
+		}
+	}
+	// END custom username sync change: related records follow the rename attempt.
 	return tx.First(user, user.Id).Error
 }
+
+// START custom username sync change: update denormalized related-record usernames.
+// syncUsernameToRelatedTables updates the denormalized username fields used by logs and tokens.
+func syncUsernameToRelatedTables(tx *gorm.DB, userId int, newUsername string) error {
+	if err := tx.Model(&Log{}).Where("user_id = ?", userId).Update("username", newUsername).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&Token{}).Where("user_id = ?", userId).Update("username", newUsername).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// END custom username sync change: related-record synchronization helper complete.
 
 func (user *User) ClearBinding(bindingType string) error {
 	if user.Id == 0 {
