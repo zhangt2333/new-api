@@ -140,13 +140,15 @@ func PreWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usag
 	quota, clamp := calculateAudioQuota(quotaInfo)
 	noteQuotaClamp(relayInfo, clamp)
 
+	// START custom insufficient-balance guidance change: direct wallet and token quota failures to the website.
 	if userQuota < quota {
-		return 0, fmt.Errorf("user quota is not enough, user quota: %s, need quota: %s", logger.FormatQuota(userQuota), logger.FormatQuota(quota))
+		return 0, fmt.Errorf("预扣费额度失败，%s进行签到自动获取余额（用户剩余额度:%s，需要预扣费额度:%s）", guidanceWebsiteClause(ctx), logger.FormatQuota(userQuota), logger.FormatQuota(quota))
 	}
 
 	if !token.UnlimitedQuota && token.RemainQuota < quota {
-		return 0, fmt.Errorf("token quota is not enough, token remain quota: %s, need quota: %s", logger.FormatQuota(token.RemainQuota), logger.FormatQuota(quota))
+		return 0, fmt.Errorf("令牌额度不足，%s调整令牌额度或设为无限额度（令牌剩余额度:%s，需要额度:%s）", guidanceWebsiteClause(ctx), logger.FormatQuota(token.RemainQuota), logger.FormatQuota(quota))
 	}
+	// END custom insufficient-balance guidance change: realtime quota errors include recovery instructions.
 
 	err = PostConsumeQuota(relayInfo, quota, 0, false)
 	if err != nil {
@@ -422,7 +424,9 @@ func PreConsumeTokenQuota(relayInfo *relaycommon.RelayInfo, quota int) error {
 		if token, tokenErr := model.GetTokenByKey(relayInfo.TokenKey, false); tokenErr == nil && token != nil {
 			remainQuota = token.RemainQuota
 		}
-		return fmt.Errorf("token quota is not enough, token remain quota: %s, need quota: %s", logger.FormatQuota(remainQuota), logger.FormatQuota(quota))
+		// START custom insufficient-balance guidance change: direct token quota failures to the website.
+		return fmt.Errorf("令牌额度不足，%s调整令牌额度或设为无限额度（令牌剩余额度:%s，需要额度:%s）", guidanceWebsiteClause(nil), logger.FormatQuota(remainQuota), logger.FormatQuota(quota))
+		// END custom insufficient-balance guidance change: pre-consume token error includes recovery instructions.
 	}
 	return nil
 }

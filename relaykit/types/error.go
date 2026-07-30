@@ -148,6 +148,23 @@ func (e *NewAPIError) ErrorWithStatusCode() string {
 	return fmt.Sprintf("status_code=%d, %s", e.StatusCode, msg)
 }
 
+// START custom insufficient-balance guidance change: keep locally generated quota guidance unmasked.
+// masksErrorMessage reports whether an error message may contain sensitive
+// upstream details and should be masked before it reaches clients. Quota
+// guidance errors are generated locally and must keep the website address
+// visible so users can follow the recovery instructions.
+func masksErrorMessage(errorCode ErrorCode) bool {
+	switch errorCode {
+	case ErrorCodeCountTokenFailed,
+		ErrorCodeInsufficientUserQuota,
+		ErrorCodePreConsumeTokenQuotaFailed:
+		return false
+	}
+	return true
+}
+
+// END custom insufficient-balance guidance change: mask exemption complete.
+
 // MaskSensitiveError masks the upstream addresses of the channel that produced
 // the error in the error text; see kitutil.MaskSensitiveInfo.
 func (e *NewAPIError) MaskSensitiveError(upstreamURLs ...string) string {
@@ -158,9 +175,11 @@ func (e *NewAPIError) MaskSensitiveError(upstreamURLs ...string) string {
 		return string(e.errorCode)
 	}
 	errStr := e.Err.Error()
-	if e.errorCode == ErrorCodeCountTokenFailed {
+	// START custom insufficient-balance guidance change: use the shared mask exemption.
+	if !masksErrorMessage(e.errorCode) {
 		return errStr
 	}
+	// END custom insufficient-balance guidance change: exemption applied.
 	return kitutil.MaskSensitiveInfo(errStr, upstreamURLs...)
 }
 
@@ -208,9 +227,11 @@ func (e *NewAPIError) ToOpenAIError(upstreamURLs ...string) OpenAIError {
 			Code:    e.errorCode,
 		}
 	}
-	if e.errorCode != ErrorCodeCountTokenFailed {
+	// START custom insufficient-balance guidance change: use the shared mask exemption.
+	if masksErrorMessage(e.errorCode) {
 		result.Message = kitutil.MaskSensitiveInfo(result.Message, upstreamURLs...)
 	}
+	// END custom insufficient-balance guidance change: exemption applied.
 	if result.Message == "" {
 		result.Message = string(e.errorType)
 	}
@@ -238,9 +259,11 @@ func (e *NewAPIError) ToClaudeError(upstreamURLs ...string) ClaudeError {
 			Type:    string(e.errorType),
 		}
 	}
-	if e.errorCode != ErrorCodeCountTokenFailed {
+	// START custom insufficient-balance guidance change: use the shared mask exemption.
+	if masksErrorMessage(e.errorCode) {
 		result.Message = kitutil.MaskSensitiveInfo(result.Message, upstreamURLs...)
 	}
+	// END custom insufficient-balance guidance change: exemption applied.
 	if result.Message == "" {
 		result.Message = string(e.errorType)
 	}
