@@ -17,3 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 export * from './use-profile'
+// START custom automatic check-in change: export the console-entry check-in hook.
+export * from './use-auto-checkin'
+// END custom automatic check-in change: hook export complete.
