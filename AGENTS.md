@@ -2,6 +2,65 @@
 
 DO NOT send optional commentary
 
+## Fork Upstream Synchronization
+
+This repository is a customized fork. Upstream synchronization must preserve every verified customization as an auditable commit series on top of `upstream/main`.
+
+### History and commit structure
+
+- Keep upstream commits unchanged and place all custom commits after `upstream/main`.
+- Keep one custom capability per commit. Do not combine unrelated behavior merely because the files overlap.
+- Use Conventional Commits for every custom commit, with a concise English subject and an English body that explains the deployment-specific behavior.
+- Preserve the original author when rewriting an existing custom commit unless authorship genuinely changes.
+- Use interactive rebase for history edits. To edit one commit, prefer a targeted command such as `GIT_SEQUENCE_EDITOR="sed -i 's/^pick <commit>/edit <commit>/'" git rebase -i <commit>^`.
+- Use fixup commits and `git rebase -i --autosquash upstream/main` when that makes the intended target explicit.
+- Do not force-push rewritten history unless the user explicitly authorizes it.
+
+### Required synchronization workflow
+
+1. Confirm the worktree state with `git status --short`, the active branch, configured remotes, and the current `upstream/main` commit.
+2. Create a temporary recovery branch before rewriting material history. Remove it only after the final branch and remote state are verified.
+3. Fetch upstream, then rebase the custom series onto `upstream/main`. In this repository, `origin` is the fork and `upstream` is the source project; do not accidentally rebase onto the fork's stale `origin/main`.
+4. Inventory every pre-sync custom commit before resolving conflicts. Record which final commit preserves each capability.
+5. Resolve conflicts by first understanding the new upstream behavior, then reapplying the custom intent. Never accept `ours` or `theirs` for an entire file without reviewing the resulting behavior.
+6. Review each rewritten commit against its parent, not only the aggregate branch diff. Every deletion of upstream code must be justified by the feature requirement.
+7. Compare the pre-sync and final custom series with `git range-diff` where possible. A missing or unmatched commit requires manual investigation.
+8. Inspect files touched by multiple custom commits and confirm that later commits do not overwrite earlier custom behavior.
+9. After the rebase, verify `git status --short`, `git log --oneline --decorate`, `git diff --check upstream/main..HEAD`, commit messages, and the final file list.
+
+### Preserve custom behavior precisely
+
+- Never conclude that a customization is "covered by upstream" from similar naming, a new UI, or the removal of an old implementation. Verify semantic equivalence across entry points, data updates, error handling, edge cases, and deployment defaults.
+- If upstream removes or replaces a subsystem, map the old user-visible customization to the current subsystem. Removal of the Classic frontend, for example, does not prove that features implemented in it now exist in the replacement frontend.
+- Compare the complete old custom inventory with the final history. Each old customization must be preserved, deliberately adapted, or explicitly documented as obsolete with concrete evidence.
+- Treat duplicate-looking UI as upstream behavior unless the requirement explicitly replaces it. Adding a dedicated field or column does not authorize deleting the upstream fallback display.
+- Prefer additive changes. Preserve upstream method signatures and bodies where practical, and implement small differences with an outer condition, a local branch, or an early return.
+- Reuse upstream controllers, services, repositories, queries, permission checks, caches, and error handling. Add a specialized method only when it expresses a stable business operation or is necessary for atomic correctness.
+- Do not mechanically add parallel `ForXXX` methods across controller, service, and repository layers.
+- Preserve safe fallback behavior. A customization must not make an unrelated existing path fail when its new condition is not active.
+- Fixed personal-server requirements may be enabled directly; do not introduce unused feature flags solely for generality.
+
+### Custom code markers
+
+- Mark custom code with precise paired comments:
+
+  ```text
+  // START custom <feature> change: <purpose>.
+  // END custom <feature> change: <result>.
+  ```
+
+- Keep each marker pair as narrow as possible. Do not wrap unchanged upstream logic inside a custom block.
+- The marker text must identify the feature and purpose; avoid vague labels such as `custom code`.
+
+### Scope and verification discipline
+
+- Do not delete or rewrite upstream tests merely to make a rebase easier.
+- Do not fix unrelated upstream issues in a custom feature commit. Report them separately or create a dedicated commit when requested.
+- Avoid broad formatting runs. If a formatter version rewrites an entire file, revert the mechanical churn and retain only the necessary local changes.
+- Before amending, inspect `git status --short`, `git diff --name-only`, and `git diff --check`. Stage explicit file paths instead of broad commands that may capture unrelated changes.
+- When compilation or tests are explicitly skipped, still run the permitted formatting, lint, and whitespace checks where available, and report any pre-existing upstream failures separately.
+- Before handoff, ensure the worktree is clean, all custom commits follow the required convention, and no temporary fixup commits or synchronization branches remain.
+
 ## Overview
 
 This is an AI API gateway/proxy built with Go. It aggregates 40+ upstream AI providers (OpenAI, Claude, Gemini, Azure, AWS Bedrock, etc.) behind a unified API, with user management, billing, rate limiting, and an admin dashboard.
