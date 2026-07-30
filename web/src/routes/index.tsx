@@ -16,10 +16,29 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
+import { saveAffiliateCode } from '@/features/auth/lib/storage'
 import { Home } from '@/features/home'
+import { useAuthStore } from '@/stores/auth-store'
 
 export const Route = createFileRoute('/')({
+  // START custom authenticated-root change: send signed-in root visits to the console.
+  beforeLoad: ({ location }) => {
+    const { auth } = useAuthStore.getState()
+    if (!auth.user || !auth.accessToken) return
+
+    // RootComponent normally persists affiliate codes after rendering. Because
+    // authenticated visitors redirect before Home renders, preserve it here.
+    const aff = new URL(location.href, window.location.origin).searchParams
+      .get('aff')
+      ?.trim()
+    if (aff) {
+      saveAffiliateCode(aff)
+    }
+
+    throw redirect({ to: '/dashboard', replace: true })
+  },
+  // END custom authenticated-root change: anonymous home-page behavior remains unchanged.
   component: Home,
 })
