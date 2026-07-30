@@ -122,7 +122,9 @@ func SetApiRouter(router *gin.Engine) {
 
 				// Check-in routes
 				selfRoute.GET("/checkin", controller.GetCheckinStatus)
-				selfRoute.POST("/checkin", middleware.TurnstileCheck(), controller.DoCheckin)
+				// START custom automatic check-in change: reuse the authenticated check-in endpoint without interactive Turnstile.
+				selfRoute.POST("/checkin", controller.DoCheckin)
+				// END custom automatic check-in change: the existing check-in endpoint supports console-entry calls.
 
 				// Custom OAuth bindings
 				selfRoute.GET("/oauth/bindings", controller.GetUserOAuthBindings)

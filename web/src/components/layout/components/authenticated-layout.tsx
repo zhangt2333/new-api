@@ -21,6 +21,10 @@ import { SkipToMain } from '@/components/skip-to-main'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { LayoutProvider } from '@/context/layout-provider'
 import { SearchProvider } from '@/context/search-provider'
+// START custom automatic check-in change: trigger the daily check-in from the authenticated layout.
+import { AutoCheckinRewardDialog } from '@/features/profile/components/auto-checkin-reward-dialog'
+import { useAutoCheckin } from '@/features/profile/hooks'
+// END custom automatic check-in change: layout hook import complete.
 import { getCookie } from '@/lib/cookies'
 import { cn } from '@/lib/utils'
 
@@ -33,6 +37,9 @@ type AuthenticatedLayoutProps = {
 
 export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
+  // START custom automatic check-in change: perform a silent idempotent check-in on console entry.
+  const { awardedQuota, dismissAward } = useAutoCheckin()
+  // END custom automatic check-in change: console-entry trigger complete.
 
   return (
     <LayoutProvider>
@@ -54,6 +61,12 @@ export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
             </SidebarInset>
           </div>
         </SidebarProvider>
+        {/* START custom automatic check-in change: show the console-entry check-in reward prominently. */}
+        <AutoCheckinRewardDialog
+          awardedQuota={awardedQuota}
+          onClose={dismissAward}
+        />
+        {/* END custom automatic check-in change: reward dialog rendered. */}
       </SearchProvider>
     </LayoutProvider>
   )

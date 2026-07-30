@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { api } from '@/lib/api'
+import { api, type ApiRequestConfig } from '@/lib/api'
 import type { LoginSession } from '@/stores/auth-store'
 
 import type {
@@ -216,11 +216,14 @@ export async function getCheckinStatus(
  * Perform daily checkin
  */
 export async function performCheckin(
-  turnstileToken?: string
+  turnstileToken?: string,
+  // START custom automatic check-in change: allow console-entry calls to suppress expected business errors.
+  config?: ApiRequestConfig
 ): Promise<ApiResponse<CheckinResponse>> {
   const url = turnstileToken
     ? `/api/user/checkin?turnstile=${encodeURIComponent(turnstileToken)}`
     : '/api/user/checkin'
-  const res = await api.post(url)
+  const res = await api.post(url, undefined, config)
   return res.data
 }
+// END custom automatic check-in change: existing check-in requests can run silently when requested.

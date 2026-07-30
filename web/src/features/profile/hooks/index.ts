@@ -19,3 +19,6 @@ For commercial licensing, please contact support@quantumnous.com
 export * from './use-profile'
 export * from './use-access-token'
 export * from './use-two-fa'
+// START custom automatic check-in change: export the console-entry check-in hook.
+export * from './use-auto-checkin'
+// END custom automatic check-in change: hook export complete.
