@@ -2985,6 +2985,7 @@
     "No rules yet": "暂无规则",
     "No rules yet. Add a group below to get started.": "暂无规则。请在下方添加分组以开始。",
     "No separate media pricing configured.": "未配置单独的媒体定价。",
+    "No sign-in method is enabled. Please contact the administrator.": "当前未启用任何登录方式，请联系管理员。",
     "No status code mappings configured.": "未配置状态码映射。",
     "No stores on this merchant yet. Set a return URL and click Create to mint your first pair.": "此商户暂无店铺。设置返回 URL 后点击创建来生成第一组配对。",
     "No subscription plans yet": "暂无订阅套餐",

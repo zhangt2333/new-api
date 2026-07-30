@@ -79,6 +79,9 @@ export function UserAuthForm({
   const passkeyLoginEnabled = Boolean(
     status?.passkey_login ?? status?.data?.passkey_login
   )
+  // START custom login availability change: expose passkey only when this device supports it.
+  const hasPasskeyLoginOption = passkeyLoginEnabled && passkeySupported
+  // END custom login availability change: unsupported passkey options are hidden.
   const passwordLoginEnabled =
     (status?.password_login_enabled ??
       status?.data?.password_login_enabled ??
@@ -112,7 +115,10 @@ export function UserAuthForm({
     (status?.custom_oauth_providers?.length ?? 0) > 0
   )
   const hasAlternativeLogin =
-    passkeyLoginEnabled || hasWeChatLogin || hasOAuthLogin
+    hasPasskeyLoginOption || hasWeChatLogin || hasOAuthLogin
+  // START custom login availability change: derive whether any usable login method exists.
+  const hasLoginOptions = passwordLoginEnabled || hasAlternativeLogin
+  // END custom login availability change: login-method availability derived.
 
   useEffect(() => {
     if (requiresLegalConsent) {
@@ -306,7 +312,8 @@ export function UserAuthForm({
 
   const alternativeLoginMethods = (
     <>
-      {passkeyLoginEnabled && (
+      {/* START custom login availability change: render only supported passkey login. */}
+      {hasPasskeyLoginOption && (
         <div className='mt-2 space-y-1'>
           <Button
             type='button'
@@ -322,13 +329,9 @@ export function UserAuthForm({
             )}
             {t('Sign in with Passkey')}
           </Button>
-          {!passkeySupported && (
-            <p className='text-muted-foreground text-xs'>
-              {t('Passkey is not supported on this device.')}
-            </p>
-          )}
         </div>
       )}
+      {/* END custom login availability change: unsupported passkey option omitted. */}
 
       {/* OAuth Providers */}
       <OAuthProviders
@@ -416,12 +419,24 @@ export function UserAuthForm({
           </>
         )}
 
-        <LegalConsent
-          status={status}
-          checked={agreedToLegal}
-          onCheckedChange={setAgreedToLegal}
-          className='mt-1'
-        />
+        {/* START custom login availability change: show a safe fallback when all login methods are disabled. */}
+        {!hasLoginOptions && (
+          <p className='text-muted-foreground py-6 text-center text-sm'>
+            {t(
+              'No sign-in method is enabled. Please contact the administrator.'
+            )}
+          </p>
+        )}
+
+        {hasLoginOptions && (
+          <LegalConsent
+            status={status}
+            checked={agreedToLegal}
+            onCheckedChange={setAgreedToLegal}
+            className='mt-1'
+          />
+        )}
+        {/* END custom login availability change: legal consent is shown only for usable login methods. */}
 
         {!hasAlternativeLogin && alternativeLoginMethods}
       </form>
