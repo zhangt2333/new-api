@@ -238,8 +238,10 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:    net.JoinHostPort(host, port),
-		Handler: server,
+		Addr: net.JoinHostPort(host, port),
+		// START custom api path normalization change: normalize compatible API aliases before Gin routing.
+		Handler: middleware.NormalizeAPIPath(server),
+		// END custom api path normalization change: route compatible client paths through canonical endpoints.
 	}
 
 	go func() {
