@@ -681,7 +681,7 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 	// START custom quota ceiling change: reject admin edits above the personal-server balance cap.
-	if updatedUser.Quota > model.MaxUserRemainQuota {
+	if !model.IsUserRemainQuotaExempt(originUser.Role) && updatedUser.Quota > model.MaxUserRemainQuota {
 		common.ApiError(c, model.ErrUserRemainQuotaLimitExceeded)
 		return
 	}

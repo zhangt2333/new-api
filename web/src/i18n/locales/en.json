@@ -5417,6 +5417,7 @@
     "Remaining percentage": "Remaining percentage",
     "Remaining quota": "Remaining quota",
     "Remaining Quota ({{currency}})": "Remaining Quota ({{currency}})",
+    "Remaining quota cannot exceed {{limit}}": "Remaining quota cannot exceed {{limit}}",
     "Remaining quota units": "Remaining quota units",
     "Remaining:": "Remaining:",
     "Remark": "Remark",

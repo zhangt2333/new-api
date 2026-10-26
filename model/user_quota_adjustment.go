@@ -57,7 +57,7 @@ func AdjustUserQuota(userID, operatorRole int, mode string, value int) (*UserQuo
 			return ErrWalletQuotaLimitExceeded
 		}
 		// START custom quota ceiling change: reject capped additions and overrides while the user is locked.
-		if (mode == "add" || mode == "override") && after > MaxUserRemainQuota {
+		if !IsUserRemainQuotaExempt(user.Role) && (mode == "add" || mode == "override") && after > MaxUserRemainQuota {
 			return ErrUserRemainQuotaLimitExceeded
 		}
 		// END custom quota ceiling change: capped adjustments retain upstream transaction handling.

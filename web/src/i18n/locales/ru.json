@@ -5417,6 +5417,7 @@
     "Remaining percentage": "Оставшаяся доля",
     "Remaining quota": "Остаток квоты",
     "Remaining Quota ({{currency}})": "Остаток квоты ({{currency}})",
+    "Remaining quota cannot exceed {{limit}}": "Остаток квоты не может превышать {{limit}}",
     "Remaining quota units": "Остаток единиц квоты",
     "Remaining:": "Осталось:",
     "Remark": "Примечания",

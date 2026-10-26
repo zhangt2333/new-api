@@ -573,6 +573,40 @@ func TestManageUserQuotaConcurrentSnapshots(t *testing.T) {
 	assert.Equal(t, balance, user.Quota)
 }
 
+func TestManageUserQuotaCeilingExemptsAdminAndRoot(t *testing.T) {
+	db := setupManageUserTestDB(t)
+	for _, tc := range []struct {
+		name     string
+		role     int
+		wantCap  bool
+		username string
+	}{
+		{name: "common_user_is_capped", role: common.RoleCommonUser, wantCap: true, username: "cap-common"},
+		{name: "admin_is_exempt", role: common.RoleAdminUser, username: "cap-admin"},
+		{name: "root_is_exempt", role: common.RoleRootUser, username: "cap-root"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			user := model.User{Username: tc.username, AffCode: tc.username, Quota: model.MaxUserRemainQuota, Role: tc.role}
+			require.NoError(t, db.Create(&user).Error)
+
+			_, err := model.AdjustUserQuota(user.Id, common.RoleRootUser, "add", 1)
+			if tc.wantCap {
+				require.ErrorIs(t, err, model.ErrUserRemainQuotaLimitExceeded)
+			} else {
+				require.NoError(t, err)
+			}
+
+			reloaded := model.User{}
+			require.NoError(t, db.First(&reloaded, user.Id).Error)
+			if tc.wantCap {
+				assert.Equal(t, model.MaxUserRemainQuota, reloaded.Quota)
+			} else {
+				assert.Equal(t, model.MaxUserRemainQuota+1, reloaded.Quota)
+			}
+		})
+	}
+}
+
 func TestManageUserQuotaCacheUsesCommittedIntegerDifference(t *testing.T) {
 	for _, tc := range []struct {
 		name, mode                               string

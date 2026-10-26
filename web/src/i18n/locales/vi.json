@@ -5417,6 +5417,7 @@
     "Remaining percentage": "Tỷ lệ còn lại",
     "Remaining quota": "Hạn ngạch còn lại",
     "Remaining Quota ({{currency}})": "Hạn mức còn lại ({{currency}})",
+    "Remaining quota cannot exceed {{limit}}": "Hạn mức còn lại không được vượt quá {{limit}}",
     "Remaining quota units": "Đơn vị hạn ngạch còn lại",
     "Remaining:": "Còn lại:",
     "Remark": "Nhận xét",

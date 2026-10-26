@@ -5417,6 +5417,7 @@
     "Remaining percentage": "残りの割合",
     "Remaining quota": "残りクォータ",
     "Remaining Quota ({{currency}})": "残りのクォータ ({{currency}})",
+    "Remaining quota cannot exceed {{limit}}": "残りクォータは {{limit}} を超えられません",
     "Remaining quota units": "残りクォータ単位",
     "Remaining:": "残り:",
     "Remark": "備考",

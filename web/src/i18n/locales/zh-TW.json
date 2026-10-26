@@ -5417,6 +5417,7 @@
     "Remaining percentage": "剩餘比例",
     "Remaining quota": "剩餘配額",
     "Remaining Quota ({{currency}})": "剩餘額度 ({{currency}})",
+    "Remaining quota cannot exceed {{limit}}": "剩餘額度不能超過 {{limit}}",
     "Remaining quota units": "剩餘配額單位",
     "Remaining:": "剩餘：",
     "Remark": "備註",

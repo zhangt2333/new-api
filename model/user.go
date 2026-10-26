@@ -24,6 +24,11 @@ const MaxUserRemainQuota = 75000000
 
 var ErrUserRemainQuotaLimitExceeded = fmt.Errorf("用户剩余额度不能超过 %d", MaxUserRemainQuota)
 
+// IsUserRemainQuotaExempt reports whether the role is exempt from the balance cap.
+func IsUserRemainQuotaExempt(role int) bool {
+	return role >= common.RoleAdminUser
+}
+
 // END custom quota ceiling change: deployment balance cap and error defined.
 
 var userSortColumns = map[string]string{
@@ -885,7 +890,7 @@ func (user *User) EditWithTx(tx *gorm.DB, updatePassword bool) error {
 
 	newUser := *user
 	// START custom quota ceiling change: keep model edits within the deployment balance cap.
-	if newUser.Quota > MaxUserRemainQuota {
+	if !IsUserRemainQuotaExempt(newUser.Role) && newUser.Quota > MaxUserRemainQuota {
 		return ErrUserRemainQuotaLimitExceeded
 	}
 	// END custom quota ceiling change: model edit validation complete.

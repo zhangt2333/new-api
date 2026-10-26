@@ -34,6 +34,7 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { cn } from '@/lib/utils'
 
 import { adjustUserQuota } from '../api'
+import { USER_ROLE } from '../constants'
 import type { QuotaAdjustMode } from '../types'
 
 // START custom quota ceiling change: mirror the backend balance cap in the admin dialog.
@@ -44,6 +45,7 @@ interface UserQuotaDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   userId: number
+  userRole: number
   currentQuota: number
   onSuccess: () => void
 }
@@ -61,14 +63,22 @@ export function UserQuotaDialog(props: UserQuotaDialogProps) {
   const amountValue = Number.parseFloat(amount) || 0
   const quotaValue = parseQuotaFromDollars(Math.abs(amountValue))
 
+  // START custom quota ceiling change: admin and root accounts are exempt from the balance cap.
+  const maxQuota =
+    props.userRole < USER_ROLE.ADMIN ? MAX_USER_REMAIN_QUOTA : Infinity
+  // END custom quota ceiling change: privileged roles keep unlimited balance.
+
   // START custom quota ceiling change: constrain add and override inputs to the remaining capacity.
   let maxInputValue: number | undefined
   if (mode === 'add') {
     maxInputValue = quotaUnitsToDollars(
-      Math.max(0, MAX_USER_REMAIN_QUOTA - props.currentQuota)
+      Math.max(0, maxQuota - props.currentQuota)
     )
   } else if (mode === 'override') {
-    maxInputValue = quotaUnitsToDollars(MAX_USER_REMAIN_QUOTA)
+    maxInputValue = quotaUnitsToDollars(maxQuota)
+  }
+  if (!Number.isFinite(maxInputValue)) {
+    maxInputValue = undefined
   }
   // END custom quota ceiling change: input maximum resolved.
 
@@ -78,7 +88,7 @@ export function UserQuotaDialog(props: UserQuotaDialogProps) {
     switch (mode) {
       case 'add': {
         // START custom quota ceiling change: clamp the addition preview to the cap.
-        const preview = `${t('Current quota')}: ${formatQuota(current)}  +${formatQuota(val)} = ${formatQuota(Math.min(current + val, MAX_USER_REMAIN_QUOTA))}`
+        const preview = `${t('Current quota')}: ${formatQuota(current)}  +${formatQuota(val)} = ${formatQuota(Math.min(current + val, maxQuota))}`
         // END custom quota ceiling change: addition preview is capped.
         return preview
       }
@@ -87,7 +97,7 @@ export function UserQuotaDialog(props: UserQuotaDialogProps) {
       case 'override': {
         const overrideQuota = parseQuotaFromDollars(amountValue)
         // START custom quota ceiling change: clamp the override preview to the cap.
-        const preview = `${t('Current quota')}: ${formatQuota(current)} → ${formatQuota(Math.min(overrideQuota, MAX_USER_REMAIN_QUOTA))}`
+        const preview = `${t('Current quota')}: ${formatQuota(current)} → ${formatQuota(Math.min(overrideQuota, maxQuota))}`
         // END custom quota ceiling change: override preview is capped.
         return preview
       }
@@ -104,10 +114,14 @@ export function UserQuotaDialog(props: UserQuotaDialogProps) {
       mode === 'override' ? parseQuotaFromDollars(amountValue) : quotaValue
     // START custom quota ceiling change: block submissions that exceed the backend cap.
     if (
-      (mode === 'add' && props.currentQuota + value > MAX_USER_REMAIN_QUOTA) ||
-      (mode === 'override' && value > MAX_USER_REMAIN_QUOTA)
+      (mode === 'add' && props.currentQuota + value > maxQuota) ||
+      (mode === 'override' && value > maxQuota)
     ) {
-      toast.error('用户剩余额度不能超过 75000000')
+      toast.error(
+        t('Remaining quota cannot exceed {{limit}}', {
+          limit: formatQuota(MAX_USER_REMAIN_QUOTA),
+        })
+      )
       return
     }
     // END custom quota ceiling change: over-cap submissions are rejected.
